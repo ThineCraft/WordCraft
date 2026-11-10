@@ -367,3 +367,32 @@ fn render_page_rejects_a_page_number_that_does_not_fit() {
     let r = call(&mut s, 31, "tools/call", json!({"name": "render_page", "arguments": {"page": 1, "scale": 0.5}}));
     assert_eq!(r["result"]["isError"], false, "page 1 still renders: {r}");
 }
+
+/// A backend whose every result is 1 MiB of text.
+struct Big;
+
+impl crate::Backend for Big {
+    fn call(&mut self, _: &str, _: Value) -> Result<Value, String> {
+        Ok(json!("x".repeat(1 << 20)))
+    }
+    fn has_ui(&self) -> bool {
+        false
+    }
+    fn describe(&self) -> String {
+        "big".into()
+    }
+}
+
+#[test]
+fn a_legacy_batch_does_not_keep_the_reply_that_crosses_the_output_budget() {
+    let n = (crate::tools::MAX_BATCH_OUTPUT >> 20) + 5;
+    let one =
+        |i: usize| json!({"jsonrpc": "2.0", "id": i, "method": "tools/call", "params": {"name": "execute", "arguments": {"command": "edit.copy"}}});
+    let line = Value::Array((0..n).map(one).collect()).to_string();
+    let mut s = Server::new(Box::new(Big));
+    let out = s.handle_line(&line).expect("reply");
+    assert!(out.len() <= crate::tools::MAX_BATCH_OUTPUT + (1 << 16), "{}", out.len());
+    let replies: Vec<Value> = serde_json::from_str(&out).unwrap();
+    assert_eq!(replies.len(), n);
+    assert!(replies.iter().any(|r| r["error"]["message"].as_str().is_some_and(|m| m.contains("left out"))));
+}
