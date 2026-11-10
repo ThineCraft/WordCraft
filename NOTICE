@@ -194,3 +194,4 @@ Changes made for ShareCraft
 - Removed the ArtCraft brand kit (docs/brand/: logos, marks and brand licence) and its rows in ATTRIBUTION.md. 2026-11-10
 - About dialog (crates/ui-egui/src/dialogs/dispatch.rs): now says "Based on WordCraft by the ArtCraft team." and no longer links to the ArtCraft site or chat. 2026-11-10
 - README.md: removed the ArtCraft logo and mark images and the brand-trademark paragraph that pointed at docs/brand/. 2026-11-10
+- Removed the "Join the ArtCraft community on Discord" button (title bar, backstage menu, Review ribbon, keytips) and its ui.discord command; the show_discord setting is kept but does nothing. 2026-11-10

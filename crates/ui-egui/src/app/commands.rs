@@ -769,10 +769,6 @@ impl WordApp {
                         .into(),
                 ));
             }
-            "ui.discord" => {
-                self.canvas.open_url = Some("https://discord.gg/artcraft".into());
-                json!({})
-            }
             "ui.caretAnimation" => {
                 // File › Options › Advanced › Animation: `value` true or false turns the caret's
                 // glide and fading blink on or off; no value reads it.
@@ -1116,7 +1112,6 @@ pub(crate) fn works_without_document(id: &str) -> bool {
             | "ui.printCancel"
             | "ui.fileBrowser"
             | "ui.makeDefaultApp"
-            | "ui.discord"
             | "ui.caretAnimation"
             | "ui.startScreen"
             | "ui.recentRemove"

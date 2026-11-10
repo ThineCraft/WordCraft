@@ -339,6 +339,7 @@ pub struct UiState {
     /// Headings whose sub-headings the Navigation pane hides (#1997); per session, not saved.
     #[serde(skip)]
     pub nav_collapsed: std::collections::HashSet<wordcraft_doc::Path>,
+    /// Retired community button setting; kept only so saved settings still load. Does nothing.
     pub show_discord: bool,
     /// User name (File › Options) for comments and tracked changes. `None` (no saved name) keeps
     /// the default; a saved empty name stays empty (#4368).
