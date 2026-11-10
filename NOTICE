@@ -3,9 +3,8 @@ Copyright (c) 2026 ArtCraft Team and the WordCraft contributors.
 Licensed under the MIT License or the Apache License, Version 2.0, at your option
 (LICENSE-MIT, LICENSE-APACHE).
 
-The ArtCraft name, wordmark and logos in docs/brand/ are trademarks of the ArtCraft Team. They are
-not open source and are not covered by the license above; their terms are in
-docs/brand/LICENSE-brand.txt.
+This is a modified version of WordCraft by the ArtCraft team. It does not include the ArtCraft name,
+wordmark or logos, which are trademarks of the ArtCraft Team.
 
 Third-party material
 
@@ -188,3 +187,10 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+Changes made for ShareCraft
+
+- This is a modified version of WordCraft, maintained by ThineCraft at https://github.com/ThineCraft/WordCraft. It is not the original. 2026-11-10
+- Removed the ArtCraft brand kit (docs/brand/: logos, marks and brand licence) and its rows in ATTRIBUTION.md. 2026-11-10
+- About dialog (crates/ui-egui/src/dialogs/dispatch.rs): now says "Based on WordCraft by the ArtCraft team." and no longer links to the ArtCraft site or chat. 2026-11-10
+- README.md: removed the ArtCraft logo and mark images and the brand-trademark paragraph that pointed at docs/brand/. 2026-11-10
