@@ -111,7 +111,7 @@ mod services;
 mod state;
 
 use app::control_click_as_secondary;
-pub(crate) use app::works_without_document;
+pub(crate) use app::{swaps_document, works_without_document};
 pub use clock::now_ms;
 pub use services::{HostSaveFn, Inbox, Services};
 pub use state::{AutoSaveBlock, DefaultApp, SaveChoice, keeps_everything};
@@ -730,6 +730,11 @@ pub struct WordApp {
     escape_free: bool,
     pub quit_requested: bool,
     pub autosave: bool,
+    /// A host page edits one document in this window: the person can't create, open, close or
+    /// recover another in its place (New, Open, Close, templates, Recent, Recover, their shortcuts
+    /// and File pages). The host's own open (the inbox) and its commands ([`WordApp::execute`])
+    /// still work. Off unless the host sets it.
+    pub files_locked: bool,
     /// The document's fonts that aren't installed, for the status bar and the font box, and the
     /// layout they were read from.
     pub missing_fonts: crate::chrome::MissingFontsMemo,

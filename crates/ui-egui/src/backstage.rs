@@ -64,6 +64,10 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
     if !has_document && !works_without_document(&app.ui.backstage_page) {
         app.ui.backstage_page = "home".into();
     }
+    // A hosted page (`files_locked`): the pages that would replace its document aren't shown.
+    if app.files_locked && hidden_while_locked(&app.ui.backstage_page) {
+        app.ui.backstage_page = "info".into();
+    }
     let mac = app.integrated_titlebar;
     crate::rtl::start_panel("backstage_nav")
         .exact_size(200.0)
@@ -119,6 +123,9 @@ pub fn show(app: &mut WordApp, ui: &mut Ui) {
             }
             ui.add_space(if mac { 12.0 } else { 6.0 });
             for (id, label, icon) in PAGES {
+                if app.files_locked && hidden_while_locked(id) {
+                    continue;
+                }
                 // No document open (#1129): Info, Save, Save As, Print and Export are greyed out.
                 let on = has_document || works_without_document(id);
                 let (r, resp) = ui.add_enabled_ui(on, |ui| ui.allocate_exact_size(vec2(200.0, 38.0), Sense::click())).inner;
@@ -252,7 +259,7 @@ fn recovery_page(app: &mut WordApp, ui: &mut Ui) {
 /// Opens a side-menu page, as a click on it (or its keytip) does. Without a document only the
 /// pages that work without one open.
 pub(crate) fn go_to_page(app: &mut WordApp, id: &str) {
-    if !app.has_document() && !works_without_document(id) {
+    if (!app.has_document() && !works_without_document(id)) || (app.files_locked && hidden_while_locked(id)) {
         return;
     }
     match id {
@@ -281,6 +288,12 @@ pub(crate) fn go_to_page(app: &mut WordApp, id: &str) {
         }
         _ => app.ui.backstage_page = id.into(),
     }
+}
+
+/// The Backstage pages a hosted page (`files_locked`) leaves out: each creates, opens, closes or
+/// recovers a document in the hosted one's place (Home and Open hold the Recent list).
+fn hidden_while_locked(page: &str) -> bool {
+    matches!(page, "home" | "new" | "open" | "close" | "recover")
 }
 
 /// The Backstage pages that work while no document is open (#1129).
@@ -702,7 +715,11 @@ pub(crate) fn forget_save_as_error(ctx: &egui::Context) {
 
 /// Open a file from the Recent list. A file that can't be opened (deleted, moved, unreadable)
 /// leaves File open so the list can say why, rather than closing it on a greyed-out window.
-pub(crate) fn open_recent(app: &mut WordApp, path: &str) -> Result<(), String> {
+pub fn open_recent(app: &mut WordApp, path: &str) -> Result<(), String> {
+    // A hosted page (`files_locked`) keeps its document; `open_file` would refuse it too.
+    if app.files_locked {
+        return Err(tl!("This page edits one document: it can't create, open or close another.").to_string());
+    }
     app.open_file(path, None)?;
     app.ui.backstage = false;
     app.canvas.want_focus = true;

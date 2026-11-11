@@ -203,6 +203,7 @@ impl WordApp {
             frame_ms: _,
             quit_requested: _,
             autosave: _,
+            files_locked: _,
             zotero: _,
             ctx: _,
             read_aloud_error: _,

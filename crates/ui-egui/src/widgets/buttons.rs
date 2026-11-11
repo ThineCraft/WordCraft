@@ -24,6 +24,10 @@ pub fn enabled(app: &WordApp, id: &str) -> bool {
     if !app.has_document() && !crate::works_without_document(id) {
         return false;
     }
+    // A hosted page (`files_locked`): New, Open, Close and Recover are refused, so they're grey.
+    if app.files_locked && crate::swaps_document(id) {
+        return false;
+    }
     match app.session.registry.get(id) {
         Some(_) => app.session.why_disabled(id).is_none(),
         // Zotero: one command at a time, and only in the desktop app.

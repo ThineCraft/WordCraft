@@ -91,8 +91,12 @@ pub fn start() {
                         app.session.set_document(doc);
                     }
                     let mut prefs = crate::prefs::PrefsSync::new(stored);
-                    // No document to show: start on File › Home, as the desktop app does (#766).
-                    if !sample {
+                    // Hosted, the page edits the host's document: it starts on the blank one, which
+                    // the host's open replaces, and the person can't make, open or close another.
+                    if app_bridge.is_some() {
+                        app.files_locked = true;
+                    } else if !sample {
+                        // No document to show: start on File › Home, as the desktop app does (#766).
                         app.start_screen();
                     }
                     // The host's name for the user signs this visit's work, but isn't stored as the
@@ -104,7 +108,8 @@ pub fn start() {
                         crate::host::Bridge::set_author(&mut app, &author);
                         prefs.keep_own_author(&app.session.author, &own);
                     }
-                    Ok(Box::new(WebShell { app, inbox, messages, prefs }))
+                    let hosted = app_bridge.is_some();
+                    Ok(Box::new(WebShell { app, inbox, messages, prefs, hosted }))
                 }),
             )
             .await;
@@ -124,6 +129,11 @@ pub fn start() {
     });
 }
 
+/// Whether a file name is a picture's ([`IMAGE_EXTS`]), which a drop inserts.
+fn is_picture(name: &str) -> bool {
+    std::path::Path::new(name).extension().and_then(|e| e.to_str()).is_some_and(|e| IMAGE_EXTS.iter().any(|p| e.eq_ignore_ascii_case(p)))
+}
+
 fn query() -> String {
     web_sys::window().and_then(|w| w.location().search().ok()).unwrap_or_default()
 }
@@ -139,6 +149,9 @@ struct WebShell {
     inbox: Inbox,
     messages: Rc<RefCell<Vec<String>>>,
     prefs: crate::prefs::PrefsSync,
+    /// A host page edits its document here: a dropped picture still inserts, any other dropped
+    /// file is discarded, as it could open in the document's place.
+    hosted: bool,
 }
 
 fn local_storage() -> Option<web_sys::Storage> {
@@ -187,10 +200,14 @@ impl eframe::App for WebShell {
             let ctx = ui.ctx().clone();
             let dropped = ctx.input_mut(|i| std::mem::take(&mut i.raw.dropped_files));
             for f in dropped {
+                let name = f.path().file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "dropped".into());
+                if self.hosted && !is_picture(&name) {
+                    log::info!("hosted: not opening dropped file {name}");
+                    continue;
+                }
                 let inbox = self.inbox.clone();
                 let ctx = ctx.clone();
                 wasm_bindgen_futures::spawn_local(async move {
-                    let name = f.path().file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "dropped".into());
                     match f.bytes_async().await {
                         Ok(bytes) => {
                             inbox.lock().unwrap_or_else(|e| e.into_inner()).push((name, bytes));

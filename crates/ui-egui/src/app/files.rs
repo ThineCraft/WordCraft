@@ -433,7 +433,7 @@ impl WordApp {
         }
     }
 
-    /// Files that arrived asynchronously (web picker, drops): documents open, pictures insert,
+    /// Files that arrived asynchronously (web picker, drops, a host page's open): documents open, pictures insert,
     /// recipient lists (CSV/TSV, spreadsheets, or a text file asked for as one) load as recipients.
     pub(crate) fn drain_inbox(&mut self) {
         let Some(inbox) = self.services.inbox.clone() else { return };
@@ -459,7 +459,11 @@ impl WordApp {
                 placed_picture = Self::placed_in_text(&r);
                 r
             } else {
-                self.run("file.open", json!({"path": name, "data": wordcraft_engine::cmd::insert::base64_encode(&bytes)}))
+                let params = json!({"path": name, "data": wordcraft_engine::cmd::insert::base64_encode(&bytes)});
+                // A hosted page (`files_locked`) refuses the person's Open; a document here is the
+                // host's own (its shell discards dropped documents), and it replaces the untouched
+                // blank one.
+                if self.files_locked { self.execute_user("file.open", params) } else { self.run("file.open", params) }
             };
             if r.is_ok() {
                 self.ui.backstage = false;

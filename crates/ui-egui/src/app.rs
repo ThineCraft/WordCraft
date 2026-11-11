@@ -21,7 +21,7 @@ mod input;
 mod pictures;
 mod prefs;
 
-pub(crate) use commands::works_without_document;
+pub(crate) use commands::{swaps_document, works_without_document};
 pub(crate) use input::control_click_as_secondary;
 
 impl WordApp {
@@ -137,6 +137,7 @@ impl WordApp {
             frame_ms: 0.0,
             quit_requested: false,
             autosave: true,
+            files_locked: false,
             zotero: zotero::ZoteroLink::default(),
             ctx: None,
             ime_origin: false,
@@ -338,7 +339,8 @@ impl WordApp {
         }
         if !self.recovery_seen && self.session.recovery_ready() {
             self.recovery_seen = true;
-            if !self.session.recovery_documents().is_empty() && !self.session.dirty {
+            // Not on a hosted page (`files_locked`), where restoring a copy is refused.
+            if !self.session.recovery_documents().is_empty() && !self.session.dirty && !self.files_locked {
                 self.ui.backstage = true;
                 self.ui.backstage_page = "recover".into();
             }

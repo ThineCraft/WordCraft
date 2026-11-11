@@ -60,10 +60,16 @@ pub(crate) fn qat_enabled(app: &WordApp, id: &str) -> bool {
     }
 }
 
+/// The Quick Access Toolbar's commands as drawn, in order (their keytips count these). A hosted
+/// page (`files_locked`) leaves out New and Open: they would replace its document.
+pub(crate) fn qat_shown(app: &WordApp) -> Vec<String> {
+    app.session.ribbon.qat().into_iter().filter(|id| !(app.files_locked && crate::swaps_document(id))).map(str::to_string).collect()
+}
+
 /// The Quick Access Toolbar (#379): the user's commands (Save, Undo, Redo until customized), each
 /// with a right-click menu, then the menu button that customizes it (#376).
 fn quick_access(ui: &mut Ui, app: &mut WordApp) {
-    let ids: Vec<String> = app.session.ribbon.qat().into_iter().map(str::to_string).collect();
+    let ids = qat_shown(app);
     for (index, id) in ids.iter().enumerate() {
         let id = id.as_str();
         let tip = match id {

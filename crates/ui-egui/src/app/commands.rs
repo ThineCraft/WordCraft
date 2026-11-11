@@ -28,6 +28,12 @@ impl WordApp {
     /// Close, Envelopes, Labels and Finish & Merge on a document with unsaved changes first ask
     /// Save / Don't Save / Cancel, and the command runs once that is answered (`ui.saveChanges`).
     pub fn run(&mut self, id: &str, params: Value) -> Result<Value, String> {
+        // A hosted page edits the host's document: the person's New, Open, Close and Recover,
+        // from any button, shortcut or search, are refused quietly. `execute` (the host's own
+        // commands) and the inbox (the host's open) don't come here.
+        if self.files_locked && swaps_document(id) {
+            return Err(tl!("This page edits one document: it can't create, open or close another.").to_string());
+        }
         // Comment text still being typed is written first, so a save or export has it and a
         // close, New or Open counts it as a change (#1348). A draft the document refuses is not
         // part of it: saving and exporting go on without it (the refusal stays on the status
@@ -1120,6 +1126,12 @@ pub(crate) fn works_without_document(id: &str) -> bool {
             | "ui.statusCount"
             | "ui.checkForUpdates"
     ) || id.starts_with("help.")
+}
+
+/// User commands that put another document in the shown one's place, or ask which: refused by
+/// [`WordApp::run`] while [`WordApp::files_locked`] is set.
+pub(crate) fn swaps_document(id: &str) -> bool {
+    matches!(id, "file.new" | "file.newFromTemplate" | "file.open" | "file.close" | "file.closeDocument" | "file.recover" | "ui.openFileDialog")
 }
 
 /// Commands that save, export, print, send or replace the document: comment text still being
