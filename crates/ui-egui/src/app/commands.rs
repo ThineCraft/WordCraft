@@ -334,8 +334,14 @@ impl WordApp {
         {
             let path = params.get("path").and_then(Value::as_str).unwrap_or("");
             let name = std::path::Path::new(path).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| path.to_string());
-            self.dialog =
-                Some(dialogs::Dialog::Password { name, then: id.to_string(), params, password: Default::default(), message: String::new() });
+            self.dialog = Some(dialogs::Dialog::Password {
+                name,
+                then: id.to_string(),
+                params,
+                password: Default::default(),
+                message: String::new(),
+                replaces: None,
+            });
             return Ok(json!({"pending": "password"}));
         }
         // Whoever asked, a failed open names the file and the cause (#1103).

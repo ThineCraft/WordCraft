@@ -418,7 +418,8 @@ pub enum Dialog {
     },
     /// Opening a password-protected document (#55): the password, then the command that asked
     /// for it (`then`: `file.open`, or `file.newFromTemplate` for a protected template, #3433)
-    /// with `params` again. The password is never serialised or printed.
+    /// with `params` again. The password is never serialised or printed. `replaces`: on a hosted
+    /// page, the document a host's protected document takes the place of once it opens.
     Password {
         name: String,
         then: String,
@@ -427,6 +428,8 @@ pub enum Dialog {
         #[serde(skip)]
         password: Password,
         message: String,
+        #[serde(skip)]
+        replaces: Option<u64>,
     },
     /// File › Info › Protect Document › Encrypt with Password: a password typed twice
     /// (`file.encrypt`); left empty, it removes the password.

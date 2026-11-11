@@ -1295,7 +1295,7 @@ fn insert_merge_field_dialog(app: &mut WordApp, ui: &mut Ui, d: &mut Dialog) -> 
 }
 
 fn password_dialog(app: &mut WordApp, ui: &mut Ui, d: &mut Dialog) -> bool {
-    let Dialog::Password { name, then, params, password, message } = d else {
+    let Dialog::Password { name, then, params, password, message, replaces } = d else {
         return false;
     };
     ui.label(crate::i18n::fmt(tl!("{name} is protected with a password."), &[("name", name)]));
@@ -1320,6 +1320,10 @@ fn password_dialog(app: &mut WordApp, ui: &mut Ui, d: &mut Dialog) -> bool {
         // asked runs again, so a protected template still starts a new document (#3433).
         match app.execute(then, p) {
             Ok(_) => {
+                // A host's protected document on a hosted page: it now replaces the one shown.
+                if let Some(replaced) = *replaces {
+                    app.close_replaced(replaced);
+                }
                 app.ui.backstage = false;
                 return true;
             }

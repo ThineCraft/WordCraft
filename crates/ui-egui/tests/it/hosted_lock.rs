@@ -1,6 +1,6 @@
 //! A hosted page (`files_locked`): the person can't create, open, close or recover a document in
-//! its place, by any route; the host's own open (through the inbox) and its commands (`execute`)
-//! still work, and dropped pictures still insert.
+//! its place, by any route; the host's own open (`host_open`, which replaces the document shown)
+//! and its commands (`execute`) still work, and dropped pictures still insert.
 
 use egui_kittest::kittest::{By, NodeT, Queryable};
 use serde_json::json;
@@ -208,6 +208,37 @@ fn locked_host_open_replaces_an_edited_blank() {
     assert!(body(a).contains("stored text"), "the host's document is shown: {:?}", body(a));
     assert!(!body(a).contains("typed early"));
     assert!(a.dialog.is_none(), "no Save Changes prompt");
+}
+
+#[test]
+fn locked_host_open_behind_a_password_replaces_an_edited_blank() {
+    let (a, _, host_open) = hosted();
+    let mut h = harness(a);
+    h.state_mut().run("text.insert", json!({"text": "typed early"})).unwrap();
+    let pw = "synthetic-pw-5150";
+    let bytes = wordcraft_engine::io::save_bytes_with(
+        "stored.docx",
+        &Document::from_text("stored text"),
+        Some(pw),
+        &wordcraft_engine::io::ExportOptions::default(),
+    )
+    .unwrap();
+    host_open.lock().unwrap().push(("stored.docx".into(), bytes));
+    for _ in 0..3 {
+        h.step();
+    }
+    assert_eq!(h.state().dialog.as_ref().map(|d| d.name()), Some("password"), "the host's document asks for its password");
+    h.get_by_role(egui::accesskit::Role::PasswordInput).type_text(pw);
+    h.step();
+    h.get_by_label("OK").click();
+    for _ in 0..3 {
+        h.step();
+    }
+    let a = h.state();
+    assert!(a.dialog.is_none(), "no Save Changes prompt: {:?}", a.dialog.as_ref().map(|d| d.name()));
+    assert_eq!(a.session.documents().len(), 1, "the host's document replaced the edited one");
+    assert!(body(a).contains("stored text"), "the host's document is shown: {:?}", body(a));
+    assert!(!body(a).contains("typed early"));
 }
 
 #[test]

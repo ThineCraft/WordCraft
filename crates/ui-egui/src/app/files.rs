@@ -435,8 +435,9 @@ impl WordApp {
 
     /// Documents a host page sent to edit (its `open`, [`crate::Services::host_open`]). On a
     /// hosted page (`files_locked`) each replaces the one document shown, edited or not: the page
-    /// edits the host's document, and what was typed before it arrived isn't the host's. Unlocked,
-    /// it opens as a dropped document does.
+    /// edits the host's document, and what was typed before it arrived isn't the host's. A
+    /// protected one replaces it once its password opens it. Unlocked, it opens as a dropped
+    /// document does.
     pub(crate) fn drain_host_open(&mut self) {
         let Some(queue) = self.services.host_open.clone() else { return };
         let files = std::mem::take(&mut *queue.lock().unwrap_or_else(std::sync::PoisonError::into_inner));
@@ -451,21 +452,32 @@ impl WordApp {
             let replaced = self.session.document_id();
             // Not `run`, which refuses Open here; `execute_user` still asks for a password.
             match self.execute_user("file.open", params) {
-                Ok(_) => {
-                    // An edited document isn't replaced in place, so the host's opened beside it:
-                    // close the one it replaces, unsaved changes and all.
-                    if self.session.document_id() != replaced
-                        && self.session.is_open(replaced)
-                        && let Err(e) = self.session.close_document(replaced)
-                    {
-                        log::warn!("hosted open: closing the replaced document: {e}");
+                // A protected document asks for its password first: the password dialog replaces
+                // the document once it opens.
+                Ok(r) if r.get("pending").and_then(serde_json::Value::as_str) == Some("password") => {
+                    if let Some(crate::dialogs::Dialog::Password { replaces, .. }) = self.dialog.as_mut() {
+                        *replaces = Some(replaced);
                     }
-                    self.sync_document();
+                }
+                Ok(_) => {
+                    self.close_replaced(replaced);
                     self.ui.backstage = false;
                 }
                 Err(e) => log::warn!("hosted open of {name} failed: {e}"),
             }
         }
+    }
+
+    /// After a host's document opened on a hosted page: an edited document isn't replaced in
+    /// place, so the host's opened beside it. Close the one it replaces, unsaved changes and all.
+    pub(crate) fn close_replaced(&mut self, replaced: u64) {
+        if self.session.document_id() != replaced
+            && self.session.is_open(replaced)
+            && let Err(e) = self.session.close_document(replaced)
+        {
+            log::warn!("hosted open: closing the replaced document: {e}");
+        }
+        self.sync_document();
     }
 
     /// Files that arrived asynchronously (web picker, drops): documents open, pictures insert,

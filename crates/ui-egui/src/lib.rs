@@ -732,8 +732,8 @@ pub struct WordApp {
     pub autosave: bool,
     /// A host page edits one document in this window: the person can't create, open, close or
     /// recover another in its place (New, Open, Close, templates, Recent, Recover, their shortcuts
-    /// and File pages). The host's own open (the inbox) and its commands ([`WordApp::execute`])
-    /// still work. Off unless the host sets it.
+    /// and File pages). The host's own open ([`Services::host_open`], which replaces the document
+    /// shown) and its commands ([`WordApp::execute`]) still work. Off unless the host sets it.
     pub files_locked: bool,
     /// The document's fonts that aren't installed, for the status bar and the font box, and the
     /// layout they were read from.
