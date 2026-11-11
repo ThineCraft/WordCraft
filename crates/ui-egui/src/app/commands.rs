@@ -33,7 +33,7 @@ impl WordApp {
         // refused quietly. `execute` (the host's own commands) and the inbox (the host's open)
         // don't come here.
         if self.files_locked && (swaps_document(id) || merge_opens_document(id, &params)) {
-            return Err(tl!("This page edits one document: it can't create, open or close another.").to_string());
+            return Err(tl!(HOSTED_REFUSAL).to_string());
         }
         // Comment text still being typed is written first, so a save or export has it and a
         // close, New or Open counts it as a change (#1348). A draft the document refuses is not
@@ -1128,6 +1128,9 @@ pub(crate) fn works_without_document(id: &str) -> bool {
             | "ui.checkForUpdates"
     ) || id.starts_with("help.")
 }
+
+/// What [`WordApp::run`] answers a hosted page's (`files_locked`) New, Open, Close and the like.
+pub(crate) const HOSTED_REFUSAL: &str = "This page edits one document: it can't create, open or close another.";
 
 /// User commands that put another document in the shown one's place, or ask which: refused by
 /// [`WordApp::run`] while [`WordApp::files_locked`] is set.

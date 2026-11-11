@@ -62,8 +62,11 @@ impl Bridge {
 
     /// Hand saved and exported files to the host instead of downloading them, report unsaved
     /// changes to it, and hear the files it sends.
-    pub fn connect(&self, services: &mut Services, inbox: Inbox, ctx: egui::Context) {
-        self.listen(inbox, ctx);
+    pub fn connect(&self, services: &mut Services, ctx: egui::Context) {
+        // The host's files have their own queue: the app tells them from the person's picks.
+        let host_open = Inbox::default();
+        services.host_open = Some(host_open.clone());
+        self.listen(host_open, ctx);
         let bridge = self.clone();
         services.host_save = Some(Box::new(move |name: &str, bytes: &[u8], save_as: bool| bridge.post_save(name, bytes, save_as)));
         // Anything else that would download goes to the host too.
@@ -98,7 +101,7 @@ impl Bridge {
         self.host.post_save(&name, bytes, None, save_as)
     }
 
-    /// Hear `wordcraft:open` and queue the file like a dropped one.
+    /// Hear `wordcraft:open` and queue the file for the app (`Services::host_open`).
     fn listen(&self, inbox: Inbox, ctx: egui::Context) {
         self.host.listen(move |message| {
             if let Message::Open { name, data } = message {
@@ -108,8 +111,8 @@ impl Bridge {
     }
 }
 
-/// The file an open message carries, pushed onto the inbox for the next frame, like a dropped
-/// file. A host's file is untrusted input: an oversized one is refused before it is copied into
+/// The file an open message carries, pushed onto the host's queue (`Services::host_open`) for the
+/// next frame. A host's file is untrusted input: an oversized one is refused before it is copied into
 /// the app's memory (the data's own length, not the host's claim). The crate has cleaned the name
 /// (and cut it to 255 characters); a blank one comes as `document` and becomes `Document.docx`.
 fn deliver_open(inbox: &Inbox, ctx: &egui::Context, name: &str, data: &FileData) {

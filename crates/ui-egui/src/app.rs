@@ -21,7 +21,7 @@ mod input;
 mod pictures;
 mod prefs;
 
-pub(crate) use commands::{merge_opens_document, swaps_document, works_without_document};
+pub(crate) use commands::{HOSTED_REFUSAL, merge_opens_document, swaps_document, works_without_document};
 pub(crate) use input::control_click_as_secondary;
 
 impl WordApp {
@@ -326,6 +326,7 @@ impl WordApp {
         // The active window's own work; with native windows each window does it again as it
         // draws, for itself.
         self.window_work(ctx);
+        self.drain_host_open();
         self.drain_inbox();
         self.drain_pasted();
         self.watch_fonts(ctx);

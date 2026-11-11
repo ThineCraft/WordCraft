@@ -74,6 +74,10 @@ fn locked_run_refuses_document_swaps() {
         let r = a.execute(id, json!({}));
         assert!(r != refused, "{id} through execute is not refused: {r:?}");
     }
+    // The host's own New really makes a document.
+    let mut a = app(true);
+    a.execute("file.new", json!({})).unwrap();
+    assert_eq!(a.session.documents().len(), 2, "file.new through execute makes a document");
 }
 
 #[test]
@@ -142,14 +146,24 @@ fn locked_recent_does_not_open() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-#[test]
-fn locked_inbox_opens_host_document_in_place_of_blank() {
-    let inbox = Inbox::default();
+fn docx(text: &str) -> Vec<u8> {
+    wordcraft_engine::io::save_bytes("stored.docx", &Document::from_text(text)).unwrap()
+}
+
+/// A hosted app: the person's files come through `inbox`, the host's through `host_open`.
+fn hosted() -> (WordApp, Inbox, Inbox) {
+    let (inbox, host_open) = (Inbox::default(), Inbox::default());
     let mut a = app(true);
     a.services.inbox = Some(inbox.clone());
+    a.services.host_open = Some(host_open.clone());
+    (a, inbox, host_open)
+}
+
+#[test]
+fn locked_inbox_opens_host_document_in_place_of_blank() {
+    let (a, _, host_open) = hosted();
     let mut h = harness(a);
-    let bytes = wordcraft_engine::io::save_bytes("stored.docx", &Document::from_text("stored text")).unwrap();
-    inbox.lock().unwrap().push(("stored.docx".into(), bytes));
+    host_open.lock().unwrap().push(("stored.docx".into(), docx("stored text")));
     for _ in 0..3 {
         h.step();
     }
@@ -157,6 +171,43 @@ fn locked_inbox_opens_host_document_in_place_of_blank() {
     assert_eq!(a.session.documents().len(), 1, "the host's document replaced the blank one");
     assert!(body(a).contains("stored text"), "the host's document is shown: {:?}", body(a));
     assert!(!a.ui.backstage);
+}
+
+#[test]
+fn locked_picker_document_is_refused() {
+    let (a, inbox, _) = hosted();
+    let mut h = harness(a);
+    h.state_mut().session.run("text.insert", &json!({"text": "mine"})).unwrap();
+    let document = h.state().session.document_id();
+    // A picker (Insert Picture's All files, say) or a drop delivers a document.
+    inbox.lock().unwrap().push(("picked.docx".into(), docx("picked text")));
+    for _ in 0..3 {
+        h.step();
+    }
+    let a = h.state();
+    assert_eq!(a.session.documents().len(), 1, "one document");
+    assert_eq!(a.session.document_id(), document, "the same document");
+    assert_eq!(body(a), "mine", "unchanged");
+    assert!(a.dialog.is_none());
+    assert!(inbox.lock().unwrap().is_empty(), "the file was taken, not kept for later");
+}
+
+#[test]
+fn locked_host_open_replaces_an_edited_blank() {
+    let (a, _, host_open) = hosted();
+    let mut h = harness(a);
+    // The person types before the host's document arrives.
+    h.state_mut().run("text.insert", json!({"text": "typed early"})).unwrap();
+    assert!(h.state().session.dirty);
+    host_open.lock().unwrap().push(("stored.docx".into(), docx("stored text")));
+    for _ in 0..3 {
+        h.step();
+    }
+    let a = h.state();
+    assert_eq!(a.session.documents().len(), 1, "the host's document replaced the edited one");
+    assert!(body(a).contains("stored text"), "the host's document is shown: {:?}", body(a));
+    assert!(!body(a).contains("typed early"));
+    assert!(a.dialog.is_none(), "no Save Changes prompt");
 }
 
 #[test]

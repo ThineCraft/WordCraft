@@ -718,7 +718,7 @@ pub(crate) fn forget_save_as_error(ctx: &egui::Context) {
 pub fn open_recent(app: &mut WordApp, path: &str) -> Result<(), String> {
     // A hosted page (`files_locked`) keeps its document; `open_file` would refuse it too.
     if app.files_locked {
-        return Err(tl!("This page edits one document: it can't create, open or close another.").to_string());
+        return Err(tl!(crate::HOSTED_REFUSAL).to_string());
     }
     app.open_file(path, None)?;
     app.ui.backstage = false;

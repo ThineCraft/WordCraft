@@ -433,8 +433,45 @@ impl WordApp {
         }
     }
 
-    /// Files that arrived asynchronously (web picker, drops, a host page's open): documents open, pictures insert,
+    /// Documents a host page sent to edit (its `open`, [`crate::Services::host_open`]). On a
+    /// hosted page (`files_locked`) each replaces the one document shown, edited or not: the page
+    /// edits the host's document, and what was typed before it arrived isn't the host's. Unlocked,
+    /// it opens as a dropped document does.
+    pub(crate) fn drain_host_open(&mut self) {
+        let Some(queue) = self.services.host_open.clone() else { return };
+        let files = std::mem::take(&mut *queue.lock().unwrap_or_else(std::sync::PoisonError::into_inner));
+        for (name, bytes) in files {
+            let params = json!({"path": name, "data": wordcraft_engine::cmd::insert::base64_encode(&bytes)});
+            if !self.files_locked {
+                if self.run("file.open", params).is_ok() {
+                    self.ui.backstage = false;
+                }
+                continue;
+            }
+            let replaced = self.session.document_id();
+            // Not `run`, which refuses Open here; `execute_user` still asks for a password.
+            match self.execute_user("file.open", params) {
+                Ok(_) => {
+                    // An edited document isn't replaced in place, so the host's opened beside it:
+                    // close the one it replaces, unsaved changes and all.
+                    if self.session.document_id() != replaced
+                        && self.session.is_open(replaced)
+                        && let Err(e) = self.session.close_document(replaced)
+                    {
+                        log::warn!("hosted open: closing the replaced document: {e}");
+                    }
+                    self.sync_document();
+                    self.ui.backstage = false;
+                }
+                Err(e) => log::warn!("hosted open of {name} failed: {e}"),
+            }
+        }
+    }
+
+    /// Files that arrived asynchronously (web picker, drops): documents open, pictures insert,
     /// recipient lists (CSV/TSV, spreadsheets, or a text file asked for as one) load as recipients.
+    /// On a hosted page (`files_locked`) a document here is refused (`run` refuses Open): the
+    /// host's own arrive through [`Self::drain_host_open`].
     pub(crate) fn drain_inbox(&mut self) {
         let Some(inbox) = self.services.inbox.clone() else { return };
         let files = std::mem::take(&mut *inbox.lock().unwrap_or_else(std::sync::PoisonError::into_inner));
@@ -459,11 +496,7 @@ impl WordApp {
                 placed_picture = Self::placed_in_text(&r);
                 r
             } else {
-                let params = json!({"path": name, "data": wordcraft_engine::cmd::insert::base64_encode(&bytes)});
-                // A hosted page (`files_locked`) refuses the person's Open; a document here is the
-                // host's own (its shell discards dropped documents), and it replaces the untouched
-                // blank one.
-                if self.files_locked { self.execute_user("file.open", params) } else { self.run("file.open", params) }
+                self.run("file.open", json!({"path": name, "data": wordcraft_engine::cmd::insert::base64_encode(&bytes)}))
             };
             if r.is_ok() {
                 self.ui.backstage = false;

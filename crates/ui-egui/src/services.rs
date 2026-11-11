@@ -25,6 +25,10 @@ pub struct Services {
     pub open_async: Option<Box<dyn Fn(&str)>>,
     /// Web: files (name, bytes) delivered asynchronously (picker, drag and drop).
     pub inbox: Option<Inbox>,
+    /// Web, hosted: documents the host page sends to edit (its `open`). Kept apart from `inbox`,
+    /// which pickers and drops fill, so a hosted page tells the host's document from one the
+    /// person picked ([`WordApp::files_locked`]).
+    pub host_open: Option<Inbox>,
     /// Web: pictures pasted from the browser's clipboard (the bytes; the name is ignored). Kept
     /// apart from `inbox` because a paste only lands in the document when the page is the edit
     /// target (#1349), where a dropped or opened file always lands.
