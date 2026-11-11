@@ -184,3 +184,50 @@ fn unlocked_new_still_works() {
     h.step();
     assert_eq!(h.state().ui.backstage_page, "home", "File opens on Home");
 }
+
+#[test]
+fn locked_mail_merge_does_not_open_a_document() {
+    let merges = [
+        ("mailings.finish", json!({"records": "all"})),
+        ("mailings.finish", json!({})),
+        ("mailings.printDocuments", json!({"records": "all"})),
+        ("mailings.labels", json!({"text": "Ada"})),
+        ("mailings.labels", json!({})),
+        ("mailings.envelopes", json!({"delivery": "Ada\nOne Street"})),
+        ("mailings.envelopes", json!({"delivery": "Ada\nOne Street", "add": false})),
+    ];
+    let with_recipients = |locked: bool| {
+        let mut a = app(locked);
+        a.session.run("text.insert", &json!({"text": "Dear friend"})).unwrap();
+        a.execute("mailings.recipients", json!({"rows": [{"Name": "Ada"}, {"Name": "Grace"}]})).unwrap();
+        a
+    };
+    for (id, params) in &merges {
+        let mut a = with_recipients(true);
+        let document = a.session.document_id();
+        let r = a.run(id, params.clone());
+        assert!(r.is_err(), "{id} {params} is refused while locked: {r:?}");
+        assert_eq!(a.session.documents().len(), 1, "{id} {params}: one document");
+        assert_eq!(a.session.document_id(), document, "{id} {params}: the same document");
+        assert!(a.dialog.is_none(), "{id} {params}: no dialog");
+        // Unlocked, the same merge makes a new document (a bare call opens its dialog instead).
+        let mut a = with_recipients(false);
+        a.run(id, params.clone()).unwrap();
+        if a.dialog.is_none() {
+            assert_eq!(a.session.documents().len(), 2, "{id} {params} unlocked makes a document");
+        }
+    }
+    // An envelope added to the hosted document stays allowed, and Envelopes still opens its dialog.
+    let mut a = with_recipients(true);
+    a.run("mailings.envelopes", json!({"delivery": "Ada\nOne Street", "add": true})).unwrap();
+    assert_eq!(a.session.documents().len(), 1);
+    assert!(body(&a).contains("One Street"), "the envelope is in the hosted document");
+    let mut a = with_recipients(true);
+    a.run("mailings.envelopes", json!({})).unwrap();
+    assert!(a.dialog.is_some(), "the Envelopes dialog opens");
+    assert_eq!(a.session.documents().len(), 1);
+    // The host's own path (`execute`) is not refused.
+    let mut a = with_recipients(true);
+    a.execute("mailings.finish", json!({"records": "all"})).unwrap();
+    assert_eq!(a.session.documents().len(), 2);
+}

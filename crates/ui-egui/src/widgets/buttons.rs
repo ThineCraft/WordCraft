@@ -24,8 +24,9 @@ pub fn enabled(app: &WordApp, id: &str) -> bool {
     if !app.has_document() && !crate::works_without_document(id) {
         return false;
     }
-    // A hosted page (`files_locked`): New, Open, Close and Recover are refused, so they're grey.
-    if app.files_locked && crate::swaps_document(id) {
+    // A hosted page (`files_locked`): New, Open, Close, Recover and the merges that make a new
+    // document are refused, so they're grey. Envelopes stays: its dialog can add to this document.
+    if app.files_locked && (crate::swaps_document(id) || crate::merge_opens_document(id, &Value::Null)) {
         return false;
     }
     match app.session.registry.get(id) {

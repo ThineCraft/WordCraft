@@ -51,7 +51,8 @@ pub(super) fn envelopes_ui(app: &mut WordApp, ui: &mut Ui, f: &mut EnvelopeForm)
     ui.horizontal(|ui| {
         ui.with_layout(crate::rtl::far_side(ui, egui::Align::Center), |ui| {
             cancel = ui.button(tl!("Cancel")).clicked() || ui.input(|i| i.key_pressed(egui::Key::Escape));
-            new = ui.add_enabled(ready, egui::Button::new(tl!("New Document"))).clicked();
+            // A hosted page (`files_locked`) keeps its one document: the envelope can only be added to it.
+            new = ui.add_enabled(ready && !app.files_locked, egui::Button::new(tl!("New Document"))).clicked();
             add = ui.add_enabled(ready, crate::widgets::primary_button(ui, tl!("Add to Document"))).clicked();
         });
     });

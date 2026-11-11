@@ -21,7 +21,7 @@ mod input;
 mod pictures;
 mod prefs;
 
-pub(crate) use commands::{swaps_document, works_without_document};
+pub(crate) use commands::{merge_opens_document, swaps_document, works_without_document};
 pub(crate) use input::control_click_as_secondary;
 
 impl WordApp {

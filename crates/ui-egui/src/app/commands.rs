@@ -29,9 +29,10 @@ impl WordApp {
     /// Save / Don't Save / Cancel, and the command runs once that is answered (`ui.saveChanges`).
     pub fn run(&mut self, id: &str, params: Value) -> Result<Value, String> {
         // A hosted page edits the host's document: the person's New, Open, Close and Recover,
-        // from any button, shortcut or search, are refused quietly. `execute` (the host's own
-        // commands) and the inbox (the host's open) don't come here.
-        if self.files_locked && swaps_document(id) {
+        // and the mail merges that make a new document, from any button, shortcut or search, are
+        // refused quietly. `execute` (the host's own commands) and the inbox (the host's open)
+        // don't come here.
+        if self.files_locked && (swaps_document(id) || merge_opens_document(id, &params)) {
             return Err(tl!("This page edits one document: it can't create, open or close another.").to_string());
         }
         // Comment text still being typed is written first, so a save or export has it and a
@@ -1132,6 +1133,20 @@ pub(crate) fn works_without_document(id: &str) -> bool {
 /// [`WordApp::run`] while [`WordApp::files_locked`] is set.
 pub(crate) fn swaps_document(id: &str) -> bool {
     matches!(id, "file.new" | "file.newFromTemplate" | "file.open" | "file.close" | "file.closeDocument" | "file.recover" | "ui.openFileDialog")
+}
+
+/// Mail merges that put their result in a new document beside the shown one: Labels, Finish &
+/// Merge (unless it saves to a `path`), Print Documents (which merges first) and Envelopes made as
+/// a New Document. Envelopes without settings only opens its dialog, whose Add to Document puts
+/// the envelope in this document. Refused by [`WordApp::run`] while [`WordApp::files_locked`] is
+/// set: the new document would be the one a later Save stores.
+pub(crate) fn merge_opens_document(id: &str, params: &Value) -> bool {
+    match id {
+        "mailings.labels" | "mailings.printDocuments" => true,
+        "mailings.finish" => !has_value(params, "path"),
+        "mailings.envelopes" => params.get("add").and_then(Value::as_bool) != Some(true) && !no_settings(params),
+        _ => false,
+    }
 }
 
 /// Commands that save, export, print, send or replace the document: comment text still being
